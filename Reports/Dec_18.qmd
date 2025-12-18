@@ -1,0 +1,293 @@
+---
+title: "Delays in clinical detection: impact on stage at diagnosis"
+format: html
+editor: visual
+execute:
+  freeze: auto
+embed-resources: true
+toc: true
+bibliography: references.bib
+
+---
+
+## Objectives
+
+To assess how a delay in clinical detection affects
+
+-   the distribution of stage at diagnosis in absence of screening.
+
+-   the events in a screening trial that lead to an observed change in late stage disease diagnosed between the two arms.
+
+Last time, preliminary results showed that, contrary to expectations, we saw reduced stage shift given a delay in clinical diagnosis in both arms. Do these results hold up to further scrutiny, and if so, what explains them?
+
+## Methods
+
+The five-state disease progression model is shown in [@fig-model].
+
+![Five state natural history model used in MCEDsim.](Images/figure1.png){#fig-model width="500"}
+
+-   Based on the formula in [@lange_projecting_2024],the overall mean preclinical duration from the 5-state model is specified as
+
+$$
+OMST=\frac{1}{\lambda_{23} + \lambda_{24}}+\frac{\lambda_{23}}{\lambda_{23} + \lambda_{24}}\cdot \frac{1}{\lambda_{35}}
+$$
+
+-   We modeled a delay in detection by increasing the OMST by delta, maintaining $\lambda_{23}$, and assuming a multiplicative impact on the rates $\lambda_{24}$ and $\lambda_{35}$. That is,
+
+$$
+OMST+\delta=\frac{1}{\lambda_{23} + \lambda_{24} x}+\frac{\lambda_{23}}{\lambda_{23} + \lambda_{24} x}\cdot \frac{1}{\lambda_{35} x}
+$$
+
+Solving for x, we obtain
+
+$$
+x= \frac{\lambda_{35}\!\left(1 - (\mathrm{OMST} + \delta)\lambda_{23}\right)\pm\sqrt{\left((\mathrm{OMST} + \delta)\lambda_{35}\lambda_{23} - \lambda_{35}\right)^2+ 4(\mathrm{OMST} + \delta)\lambda_{35}\lambda_{24}\lambda_{23}}}{2(\mathrm{OMST} + \delta)\lambda_{35}\lambda_{24}}
+$$
+
+We use the positive root in the solution.
+
+To explore the impact of delaying clinical diagnosis in a screening trial, we use lung cancer as an example, assuming an OMST of 2 years and an LMST of .5 years. We assume individuals start the trial at age 60, and that are three annual screens and one additional year of follow-up.
+
+We vary $\delta$ from 0 to 1 years and consider the impact on
+
+-   Distribution of late and early and late stage disease in absence of screening
+
+-   Screen detected late stage disease in the screen arm
+
+-   Interval-detected late stage disease in the screen arm
+
+-   Clinical late stage disease in the control arm
+
+-   Stage shift by screen
+
+-   Cumulative stage shift \## Code
+
+## Code
+
+``` {r}
+library(MCEDsim)
+library(dplyr)
+library(ggplot2)
+library(here)
+library(patchwork)
+
+
+source(here("Code/stage_shift_code_sean.R"))
+source(here("Code/natural_history_code_sean.R"))
+
+#load rate matrices from MCEDsim package
+data("combined_fits")
+
+
+solve_for_x <- function(lambda23, lambda24, lambda35, OMST, y) {
+
+  k <- OMST + y
+  
+  # Quadratic coefficients
+  A <- k * lambda35 * lambda24
+  B <- k * lambda35 * lambda23 - lambda35
+  C <- -lambda23
+  
+  # Discriminant
+  disc <- B^2 - 4 * A * C
+  
+  if (disc < 0) {
+    stop("No real solution: discriminant < 0")
+  }
+  
+  # Quadratic formula (simplified closed form)
+  x1 <- (lambda35 * (1 - k * lambda23) +
+           sqrt((k * lambda35 * lambda23 - lambda35)^2 +
+                  4 * k * lambda35 * lambda24 * lambda23)) /
+    (2 * k * lambda35 * lambda24)
+  
+  x2 <- (lambda35 * (1 - k * lambda23) -
+           sqrt((k * lambda35 * lambda23 - lambda35)^2 +
+                  4 * k * lambda35 * lambda24 * lambda23)) /
+    (2 * k * lambda35 * lambda24)
+  
+  roots <- c(x1, x2)
+  
+  # Filter for positive X only
+  positive_roots <- roots[roots > 0]
+  
+  return(positive_roots)
+}
+
+get_adjusted_stage_shift<-function(delta,the_cancer_site,the_OMST, the_LMST, the_sex="Male"){
+ #Extract rate matrix from array of rates
+  the_index = all_meta_data_male %>% filter(cancer_site=="Lung",OMST==2, LMST==.5,sex==the_sex)
+  rate_mat=all_rates_male[,,the_index$index]
+  #dimension of rate matrix
+  k=dim(rate_mat)[1]
+
+  #original transition rates between pre-clinical and clinical states
+  lambda35=rate_mat[k-2,k]
+  lambda23=rate_mat[k-3,k-2]
+  lambda24=rate_mat[k-3,k-1]
+  
+  #solve for rate multiplier given delta 
+  out=try(solve_for_x(lambda23=lambda23,lambda24=lambda24,lambda35=lambda35,OMST=the_OMST,y=delta))
+  
+  x=out[1]
+  # Update rate matrix
+  new_rate=rate_mat
+  #set new lambda24
+  new_rate[k-3,k-1]=lambda24*x
+  #set new lambda35
+  new_rate[k-2,k]=lambda35*x
+  
+  old_EMST=1/(lambda23+lambda24)
+  old_LMST=1/(lambda35)
+  old_OMST=1/(lambda23+lambda24)+(lambda23/(lambda23+lambda24))*(1/(lambda35))
+  
+  new_OMST=1/(lambda23+lambda24*x)+(lambda23/(lambda23+lambda24*x))*(1/(lambda35*x))
+  new_EMST=1/(lambda23+lambda24*x)
+  new_LMST=1/(lambda35*x)
+  
+  #get stage shift 
+  outtable=stage_shift_by_screen(numscreens = 3,age=60,screen.int=1,sens_l=.9,sensitivities_e = .5,
+                                 rateout=new_rate,
+                                 num.followup.intervals=1)
+  outtable$delta=delta
+  outtable$x=x
+  outtable$new_OMST=new_OMST
+  outtable$new_LMST=new_LMST
+  outtable$new_EMST=new_EMST
+  outtable$old_OMST=old_OMST
+  outtable$old_LMST=old_LMST
+  outtable$old_EMST=old_EMST
+  
+  #get old and new age specific incidence
+  new_incidence=incidence_rate(new_rate)%>%mutate(delta=factor(delta))
+  
+  #plot old and new age-specific incidence
+ 
+  return(list(outtable=outtable,new_incidence=new_incidence))
+  
+}
+
+incidence_rate<-function(rate_mat){
+ ages=seq(0,80,by=.5)
+   k=dim(rate_mat)[1]
+    pred_cause_spec_hazards<-mapply(ages,FUN="cause_spec_hazards",MoreArgs=list(rate_mat=rate_mat,k=k))
+    pred=c(unlist(pred_cause_spec_hazards[1,])*1e5,unlist(pred_cause_spec_hazards[2,])*1e5)
+
+    pred_data=data.frame(age=rep(ages,times=2),stage=rep(c("Early","Advanced"),each=length(ages)),predicted_rate=pred)
+    
+    return(pred_data)
+}
+
+allout=mapply(seq(0,1,by=.1),FUN=get_adjusted_stage_shift, MoreArgs = list(the_cancer_site="Lung",the_OMST=2,the_LMST=.5,the_sex="Male"),SIMPLIFY = F)
+
+all_incidence=do.call(rbind,lapply(allout,"[[","new_incidence"))
+
+all_stage_shift=do.call(rbind,lapply(allout,"[[","outtable"))%>%mutate(delta=factor(delta))
+
+
+p1=ggplot(data=all_stage_shift,aes(y=new_OMST,x=delta))+geom_point()+ggtitle("Delta versus New OMST")  
+p2=ggplot(data=all_stage_shift,aes(y=new_EMST,x=delta))+geom_point()+ggtitle("Delta versus New EMST")  
+p3=ggplot(data=all_stage_shift,aes(y=new_LMST,x=delta))+geom_point()+ggtitle("Delta versus New LMST")  
+
+
+p4=ggplot(data=all_incidence,aes(x=age,y=predicted_rate))+geom_line(aes(group=delta,color = delta))+
+  facet_grid(~stage)+xlab("Age")+ylab("Rate/100,000")+coord_cartesian(xlim=c(45,75))+ggtitle("Projected age- and stage-specific incidence under different deltas")
+
+p5=ggplot(data=all_stage_shift,aes(y=control_late*1e5,x=interval))+geom_point(aes(color=delta))+geom_line(aes(color=delta,group=delta))+ggtitle("Projected late stage disease in control arm under different deltas")
+  
+
+p6=ggplot(data=all_stage_shift,aes(y=screen_late*1e5,x=interval))+geom_point(aes(color=delta))+geom_line(aes(color=delta,group=delta))+ggtitle("Projected screen-detected late-stage disease (screen arm) under different deltas")  
+
+p7=ggplot(data=all_stage_shift,aes(y=interval_late*1e5,x=interval))+geom_point(aes(color=delta))+geom_line(aes(color=delta,group=delta))+ggtitle("Projected interval-detected stage disease (screen arm) under different deltas")  
+
+p8=ggplot(data=all_stage_shift,aes(y=stage_shift_by_interval,x=interval))+geom_point(aes(color=delta))+geom_line(aes(color=delta,group=delta))+ggtitle("Projected stage-shift by interval under different deltas")  
+
+p9=ggplot(data=all_stage_shift,aes(y=cumulative_stage_shift,x=interval))+geom_point(aes(color=delta))+geom_line(aes(color=delta,group=delta))+ggtitle("Projected stage-shift by interval under different deltas")  
+```
+
+## Results
+
+### Basic checks on sojourn times for across different delays
+```{r}
+#| label: fig-checks
+#| echo: false
+#| fig-cap: "Checks on updated OMST, EMST, and LMST for various values of delta.  Baseline OMST=2 years, EMST=1.63 years, LMST=.5 years, lambda_{23}= 0.4581298"
+
+
+    (p1+p2+p3) +
+  plot_layout(ncol = 1,  nrow = 3, guides = "collect") &
+  theme(legend.position = "right")
+
+```
+
+### Impact of delays (delta) on age- and stage-specific incidence
+
+```{r}
+#| label: fig-incidence
+#| echo: false
+#| fig-cap: "Age and stage-specific incidence in absence of screening for different values of delta"
+
+
+   p4
+ 
+```
+
+### Impact of delays (delta) on 3-screen trial outcomes
+
+```{r}
+#| label: fig-control
+#| echo: false
+#| fig-cap: "Late stage incidence in control arm under different values of delta"
+
+
+   p5
+ 
+```
+
+```{r}
+#| label: fig-screen
+#| echo: false
+#| fig-cap: "Projected screen-detected late-stage disease (screen arm) under different deltas"
+
+
+   p6
+ 
+```
+
+```{r}
+#| label: fig-intervaln
+#| echo: false
+#| fig-cap: "Projected interval-detected late-stage disease (screen arm) under different deltas"
+
+
+   p7
+ 
+```
+
+
+```{r}
+#| label: fig-stage_shift_interval
+#| echo: false
+#| fig-cap: "Projected stage shift by screen/interval (relative reduction in late stage disease between control and screen arms) under different deltas"
+
+
+   p8
+ 
+```
+
+
+```{r}
+#| label: fig-cum_stage_shift
+#| echo: false
+#| fig-cap: "Projected cumulative stage shift (relative reduction in late stage disease between control and screen arms) under different deltas"
+
+
+   p9
+ 
+```
+
+
+
+
+ 
+```

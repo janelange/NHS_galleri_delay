@@ -60,7 +60,7 @@ We vary $\delta$ from 0 to 1 years and consider the impact on
 
 -   Stage shift by screen
 
--   Cumulative stage shift \## Code
+-   Cumulative stage shift 
 
 ## Code
 

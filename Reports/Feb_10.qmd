@@ -1,0 +1,290 @@
+---
+title: "Preliminary results--NHS-Delay Feb 12"
+author: "Jane Lange"
+format: html
+editor: visual
+toc: true
+bibliography: references.bib
+fig-cap-location: top
+embed-resources: true
+---
+
+# Objective
+
+-   Examine the impact of a delay in diagnosis in clinically detected individuals on the outcomes of the NHS Galleri trial.
+
+-   Examine sensitivity of results to the length of delay.
+
+# Methods
+
+## NHS Trial Simulation
+
+-   We simulated 200 iterations of the trial.
+-   Each NHS-Galleri simulation includes N=70,020 participants in both the screening and control arms, followed for three annual screens plus one additional year of follow-up. Starting ages range from 50 to 77 years, assigned according to UK demographic tables[@northern_ireland_statistics_and_research_agency_2021_2022]. The simulation permits censoring due to other-cause mortality but assumes no additional dropout.
+-   The trial was simulated using the **MCEDsim** package, which generates individual level natural histories according to a five-state model (@fig-model).
+-   Outcomes are simulated for 11 solid cancer sites (anus, bladder, colorectal, esophagus, gastric, head and neck, liver, lung, lymphoma,ovary, pancreas), corresponding to 11/12 cancers targeted in the NHS Galleri trial endpoints.
+-   For the NHS Galleri simulations, models are calibrated to National Cancer Registration and Analysis Service (NCRAS) data. \[Need to rerun simulations with UK data--these results actually based on US data.\]
+-   Other cause death is based on US mortality tables.
+
+![Five state natural history model used in MCEDsim.](Images/figure1.png){#fig-model width="60%"}
+
+## Natural history and test performance inputs
+
+-   **MCEDsim** is calibrated to age- and stage-specific cancer incidence data based on two key inputs: the overall mean pre-clinical sojourn time (OMST) and the late-stage mean pre-clinical sojourn time (LMST).
+-   Natural history model and sensitivity inputs are specified as in [@gogebakan_clinical_2025], which noted that the only existing study of pre-clinical detectability of the GRAIL demonstrated virtually no sensitivity beyond 2 years prior to clinical diagnosis[@patel_methylated_2023].
+-   Sensitivity of the MCED test for each cancer site is set so that early-stage sensitivity is either equal to that observed in case-control studies [@klein_clinical_2021] of clinically diagnosed patients (optimistic) or 50% of that level (conservative) (@tbl-sens_tab). Sensitivity for late-stage disease is assumed to be equal to that of clinically diagnosed patients. The three combinations of OMST, LMST, and early stage sensitivity assumptions are summarized in @tbl-simulation_input.
+
+```{r}
+#| tbl-cap: "Sensitivity of Galleri test based on case-control study [@klein_clinical_2021]"
+#| tbl-colwidths: [60,40]
+#| echo: false
+#| label: tbl-sens_tab
+knitr::kable(data.frame(
+Site = c("Anus","Bladder","Colorectal","Esophagus","Gastric",
+"Head and neck","Liver","Lung","Lymphoma","Ovary","Pancreas"),
+Early=c(0.5,
+0.18,
+0.67,
+0.48,
+0.33,
+0.72,
+0.94,
+0.4,
+0.46,
+0.6,
+0.62),
+Late=c(1,
+0.83,
+0.92,
+0.97,
+0.94,
+0.93,
+1,
+0.93,
+0.66,
+0.9,
+0.88)
+))
+```
+
+```{r}
+#| label: tbl-simulation_input
+#| echo: false
+#| tbl-cap: "Simulation input scenarios."
+
+
+knitr::kable(data.frame(
+Assumption = c("Fast-fast-optimistic",
+"Slow-fast-conservative",
+"Slow-slow-conservative"),
+OMST = c("1 year", "2 years", "2 years"),
+LMST = c("6 months", "6 months", "1 year"),
+"Relative Early-Stage Sensitivity" = c("100%", "50%", "50%")
+))
+```
+
+## Delays in diagnosis due to spillover effects
+
+-   To operationalize the spillover effect, we add a delay to the times of diagnosis in those with clinically detected disease in screen and control arms.\
+-   Currently, we assume a constant delay across all individuals.
+-   Specified delays range from 0-.5 years, in increments of .1 years.
+-   Among individuals who would have been diagnosed at an early stage in the absence of delay, we resample stage at the delayed diagnosis time based on the probability of transitioning between early- and late-stage disease.
+-   We assume a continuous-time Markov model for stage progression, with an average duration of 0.5 years spent in early-stage disease.
+
+## Reporting results
+
+-   We report counts of early-stage (I-II) and late-stage disease detected at the end of the trial for screen- and clinically-detected cancers for the range of delay scenarios (0-.6 years).
+-   We also report the absolute and relative reduction in late- stage disease in the screen and control arms.
+-   Current results are based on outcomes observed within the trial (i.e., censored by the end of the trial).
+
+# Results
+
+-   Under diagnostic delays in clinically diagnosed patients
+
+    -   Overall number of clinically detected cases observed during the trial goes down (@fig-counts)
+
+    -   Counts of clinically diagnosed cancers in late-stage disease increase, and early-stage cancers decrease.
+
+    -   Counts of screen-detected cases are unaffected.
+
+```{r}
+#| echo: false
+#| message: false
+library(here)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(patchwork)
+load(here("Data/scenario_1/delay_summary.Rdata"))
+counts=do.call(rbind,counts_list)%>%mutate(followup=as.numeric(as.character(followup)))
+
+
+counts_summary <- subset(counts, followup <= 3) %>%
+  group_by(seed, delay) %>%
+  summarise(
+    tot_late_control  = sum(tot_late_control),
+    tot_late_screen   = sum(tot_late_screen),
+    tot_late_interval = sum(tot_late_interval),
+    tot_early_screen  = sum(tot_early_screen),
+    tot_early_interval= sum(tot_early_interval),
+    tot_early_control = sum(tot_early_control),
+    .groups = "drop"
+  )
+
+counts_summary <- counts_summary %>%
+  group_by(delay) %>%
+  summarise(
+    n = n(),
+    mean_late_control = mean(tot_late_control),
+    se_late_control   = sd(tot_late_control)/sqrt(n),
+
+    mean_early_control = mean(tot_early_control),
+    se_early_control   = sd(tot_early_control)/sqrt(n),
+
+    mean_late_screen = mean(tot_late_screen),
+    se_late_screen   = sd(tot_late_screen)/sqrt(n),
+
+    mean_late_interval = mean(tot_late_interval),
+    se_late_interval   = sd(tot_late_interval)/sqrt(n),
+
+    mean_late_screen_arm = mean(tot_late_screen + tot_late_interval),
+    se_late_screen_arm   = sd(tot_late_screen + tot_late_interval)/sqrt(n),
+
+    mean_early_screen = mean(tot_early_screen),
+    se_early_screen   = sd(tot_early_screen)/sqrt(n),
+
+    mean_early_interval = mean(tot_early_interval),
+    se_early_interval   = sd(tot_early_interval)/sqrt(n),
+
+    mean_early_screen_arm = mean(tot_early_screen + tot_early_interval),
+    se_early_screen_arm   = sd(tot_early_screen + tot_early_interval)/sqrt(n),
+
+    mean_all_control = mean(tot_early_control + tot_late_control),
+    se_all_control   = sd(tot_early_control + tot_late_control)/sqrt(n),
+
+    mean_all_screen = mean(tot_early_screen + tot_late_screen),
+    se_all_screen   = sd(tot_early_screen + tot_late_screen)/sqrt(n),
+
+    mean_all_interval = mean(tot_early_interval + tot_late_interval),
+    se_all_interval   = sd(tot_early_interval + tot_late_interval)/sqrt(n),
+
+    mean_all_screen_arm = mean(tot_early_screen + tot_early_interval + tot_late_screen + tot_late_interval),
+    se_all_screen_arm   = sd(tot_early_screen + tot_early_interval + tot_late_screen + tot_late_interval)/sqrt(n),
+
+    mean_reduction = mean(tot_late_control - (tot_late_screen + tot_late_interval)),
+    se_reduction   = sd(tot_late_control - (tot_late_screen + tot_late_interval))/sqrt(n),
+
+    mean_rel_reduction = 100*mean((tot_late_control - (tot_late_screen + tot_late_interval))/tot_late_control),
+    se_rel_reduction   = 100*sd((tot_late_control - (tot_late_screen + tot_late_interval))/tot_late_control)/sqrt(n),
+
+    .groups = "drop"
+  )
+
+
+
+counts_long <- counts_summary %>%
+  pivot_longer(
+    cols = -delay,
+    names_to = c(".value", "variable"),
+    names_pattern = "(mean|se)_(.*)"
+)
+
+counts_only=subset(counts_long,!variable%in%c("reduction","ratio","rel_reduction"))%>%
+  mutate(stage= case_when(grepl("^early_", variable) ~ "early",
+      grepl("^late_",  variable)  ~ "late",
+        grepl("^all_",  variable)  ~ "all",
+      TRUE ~ NA_character_),
+      arm = case_when(
+      grepl("(_screen$|_screen_arm$|_interval$)", variable) ~ "screen",
+      TRUE ~ "control"),
+      mode=case_when(
+      grepl("(_screen_arm)" ,variable)~"total",
+      grepl("(_screen)", variable) ~ "screen",
+      grepl("(_control|_interval)", variable) ~ "clinical",
+          TRUE ~ "control"))%>%mutate(
+      stage = factor(stage, levels = c("early", "late", "all")),
+      arm   = factor(arm,   levels = c("control", "screen")),
+      mode  = factor(mode,  levels = c("clinical", "screen", "total"))
+ )%>%subset(!is.na(variable))
+
+
+out_reduction<-ggplot(data=subset(counts_long,variable%in%c("reduction","rel_reduction")),aes(x=delay,y=mean))+
+  geom_point()+geom_line()+
+  #geom_ribbon(aes(ymin=mean-se,ymax=mean+se),alpha=.18)+
+  facet_wrap(~variable)+theme_minimal(base_size=12)
+
+theme_mced <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      legend.position   = "bottom",
+      panel.grid.minor  = element_blank(),
+      strip.text        = element_text(face = "bold"),
+      strip.background  = element_rect(fill = NA, color = NA),
+      panel.spacing     = unit(1, "lines"),
+      plot.title = element_text(hjust = 0.5)
+    )
+}
+
+#Plots of counts of outcomes
+counts_plot <- ggplot(data=counts_only,aes(x = delay, y = mean, group = stage)) +
+ # geom_ribbon(aes(ymin = mean - 1.96*se, ymax = mean + 1.96*se, fill = stage),alpha = .18) +
+  geom_line(aes(color = stage)) +geom_point(aes(color = stage)) +facet_grid(arm ~ mode) +
+  theme_mced() +
+  labs(x = "Diagnosis delay (years)", y = "Mean count", color = "Stage")+
+  ggtitle("Stage-specific cancer diagnoses by trial arm and mode of detection")
+
+#Plots of relative reduction in late stage disease
+plot_rel_reduction <- ggplot(subset(counts_long,variable=="rel_reduction"), aes(delay, mean)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  theme_mced() +
+  labs(x = "Diagnosis delay (years)", y = "Relative reduction (%)")
+
+plot_abs_reduction <- ggplot(subset(counts_long,variable=="reduction"), aes(delay, mean)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  theme_mced() +
+  labs(x = "Diagnosis delay (years)", y = "Absolute reduction (cases)")
+
+reduction_plot<-plot_abs_reduction+ggtitle("Absolute")+plot_rel_reduction+ggtitle("Relative") + plot_annotation(title = 'Reductions in late-stage disease by delay')
+  
+
+```
+
+```{r}
+#| label: fig-counts
+#| echo: false
+#| message: false
+#| fig-height: 7 
+#| fig-cap: "Mean counts of cases detected by screen and control arm during simulated NHS-Galleri trials by diagnosis delay applied to clinically detected cases."
+counts_plot
+```
+
+-   Despite the fact that late-stage cases increase in both the screen and control arms with delayed diagnosis, the screen arm increases are proportionally greater.\
+-   Thus, the relative reduction in late-stage disease tends to decrease with increasing delay
+    -   This pattern is likely due to the fact that in our simulation, in absence of a delay in diagnosis, early-stage disease is relatively more abundant in interval cancers (55%) than in clinically diagnosed cases in the control arm (43%). Thus, under diagnostic delays, more early-stage cases screen arm are subject to transitioning to late-stage disease by the time they are detected.
+
+```{r}
+#| label: fig-reduction
+#| echo: false
+#| message: false
+#| fig-height: 3
+#| fig-cap: "Mean absolute and relative reductions in late-stage disease across 200 simulated NHS-Galleri trials as a function of diagnostic delay among clinically detected cases."
+reduction_plot
+```
+
+## Open questions
+
+-   How do we want to consider extended follow-up?
+
+    -   Of those cancers that are diagnosed within the trial, project final disease stage after X years of follow-up.
+    -   Assume trial is extended by X years, spillover effects continue, and project late-stage disease for all diagnosed within the full extended time frame.
+
+## Next steps
+
+-   Rerun trial simulation using UK natural history models.
+-   Generate results for extended follow-up.
+-   Incorporate mortality outcomes?
+-   Rerun results for different natural history assumptions.
+-   Allow early-to-late transition rate to vary by cancer site.

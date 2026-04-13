@@ -10,12 +10,14 @@ i <- as.numeric(args[1])
 scenario_no <-as.numeric(args[2])
 delay_no <-as.numeric(args[3])
 extended_followup<-as.numeric(args[4])
+early_to_late_rate<-as.numeric(args[5])
 
 
 #i=1
 #scenario_no=1
-#delay_no=1
+#delay_no=6
 #extended_followup=0
+#early_to_late_rate=4
 
 the_delay=case_when(delay_no == 1 ~ 0,
                               delay_no==2 ~ .1,
@@ -29,7 +31,7 @@ the_delay=case_when(delay_no == 1 ~ 0,
 #Load data file
 dirname=paste0("/home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_",scenario_no,"/delay_",delay_no)
 
-load(file.path(dirname,paste0("delay_", extended_followup, "_", i,".Rdata")))
+load(file.path(dirname,paste0("delay_", extended_followup, "_", early_to_late_rate,"_", i,".Rdata")))
 
 ###################################################################################################################
 screen_info<-expand.grid(sex=c("Male","Female"),cancer_site=c("Anus",  "Bladder",  "Colorectal", "Esophagus",
@@ -117,15 +119,17 @@ control_cancers_followup=control_cancers
 
 ###############################################################################
 
-
 #Save summary data file
-save_file_name=file.path(dirname,paste0("summary_delay_", extended_followup, "_",i,".Rdata"))
+
+
+save_file_name=file.path(dirname,paste0("summary_delay_", extended_followup, "_", early_to_late_rate,"_", i,".Rdata"))
 out=list(control_cancers_followup=control_cancers_followup,
          summary_screen_at_risk=summary_screen_at_risk,
          summary_screen_cancers=summary_screen_cancers,
          summary_interval_cancers=summary_interval_cancers,
           delay=the_delay,
-         extended_followup=extended_followup)
+         extended_followup=extended_followup,
+         early_to_late_rate=early_to_late_rate)
 save(out,file=save_file_name)
 
 

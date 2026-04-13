@@ -4,15 +4,28 @@ library(tidyr)
 library(tidyverse)
 
 args <- commandArgs(trailingOnly = TRUE)
-extended_followup<-as.numeric(args[1])
-scenario_no <-as.numeric(args[2])
 
+scenario_no <-as.numeric(args[1])
+extended_followup<-as.numeric(args[2])
+early_to_late_rate<-as.numeric(args[3])
+
+#scenario_no=3
+#extended_followup=1
+#early_to_late_rate=4
+#delay_no=1
+  
+all_list=list()
+
+for(early_to_late_rate in c(1,2,4)){
+for(extended_followup in 0:1){
+for(scenario_no in 1:3){
 num_delays=6
 counts_list<-list()
 
 for(delay_no in 1:num_delays){
+  
   dirname=paste0("/home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_",scenario_no,"/delay_",delay_no)
-  load(file.path(dirname,paste0("combine_summary_delay_", extended_followup,".Rdata")))
+  load(file.path(dirname,paste0("combine_summary_delay_", extended_followup, "_", early_to_late_rate, ".Rdata")))
   
   late_control<-all_control_followup %>% filter(stage=="2")%>%group_by(seed, followup)%>%
     summarise(tot_late_control=sum(clinical))%>%arrange(seed,followup)%>%filter(as.numeric(followup)<=3)
@@ -42,7 +55,7 @@ for(delay_no in 1:num_delays){
     arrange(seed,followup)%>%filter(as.numeric(followup)<=3)
   
   
-  counts_list[[delay_no]]<-data.frame(late_control,late_screen,late_interval,early_control,early_screen,early_interval,delay=the_delay)
+  counts_list[[delay_no]]<-data.frame(late_control,late_screen,late_interval,early_control,early_screen,early_interval,delay=the_delay,extended_followup=extended_followup,early_to_late_rate=early_to_late_rate,scenario_no=scenario_no)
 }
 
 counts=do.call(rbind,counts_list)%>%mutate(followup=as.numeric(as.character(followup)))
@@ -86,20 +99,11 @@ counts_summary <- counts_summary %>% group_by(delay) %>% summarise(mean_late_con
                                        )
 
 
-counts_long <- counts_summary %>%
-  pivot_longer(
-    cols = -delay,
-    names_to = c(".value", "variable"),
-    names_pattern = "(mean|se)_(.*)"
-)
 
-out_abs<-ggplot(data=subset(counts_long,!variable%in%c("rel_reduction","ratio")),aes(x=delay,y=mean))+
-  geom_point()+geom_line()+geom_errorbar(aes(ymin=mean-se,ymax=mean+se))+facet_wrap(~variable)+theme_minimal()
-
-out_reduction<-ggplot(data=subset(counts_long,variable%in%c("rel_reduction","ratio")),aes(x=delay,y=mean))+
-  geom_point()+geom_line()+geom_errorbar(aes(ymin=mean-se,ymax=mean+se))+facet_wrap(~variable)+theme_minimal()
-
-
-
-save(counts_list,file=paste0("/home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_",scenario_no, "/delay_summary_", extended_followup, ".Rdata"))
-
+all_list=c(all_list,counts_list)
+save(counts_list,file=paste0("/home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_",scenario_no, "/delay_summary_", extended_followup,"_", early_to_late_rate, ".Rdata"))
+}
+}
+}
+combined_data=do.call(rbind,all_list)
+save(combined_data,file=paste0("/home/groups/CEDAR/MCED_sim/Output/MARTA_sim/all_delay_summary.Rdata"))

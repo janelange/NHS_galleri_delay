@@ -5,7 +5,7 @@
 #SBATCH --time=1:00:00
 #SBATCH --mem=8G
 #SBATCH --cpus-per-task=2
-#SBATCH --array=0-1
+#SBATCH --array=1-3
 #SBATCH --partition=batch
 #SBATCH --account=cedar
 
@@ -14,7 +14,12 @@ module load r/4.5.0
 
 # Run R script for each of the scenarios
 #No extended followup
-#Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 1 
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 2 
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 3 
+Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 0 1
+Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 0 2
+Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 0 4
+
+#Extended followup
+Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 0 1
+Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 0 2
+Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/Delay_plots.R ${SLURM_ARRAY_TASK_ID} 0 4
 

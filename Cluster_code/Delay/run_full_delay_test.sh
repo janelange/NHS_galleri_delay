@@ -20,38 +20,6 @@ mkdir -p /home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_1/delay_$delay
 mkdir -p /home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_2/delay_$delay
 mkdir -p /home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_3/delay_$delay
 
-#Run script that adds delay for each of the scenarios
-#No extended followup, rate=1
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 1 $delay 0 1
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 2 $delay 0 1
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 3 $delay 0 1
-
-#No extended followup, rate=2
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 1 $delay 0 2
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 2 $delay 0 2
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 3 $delay 0 2
-
-#No extended followup, rate=4
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 1 $delay 0 4
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 2 $delay 0 4
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 3 $delay 0 4
-
-
-#Extended followup, rate=1
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 1 $delay 1 1
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 2 $delay 1 1
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 3 $delay 1 1
-
-#Extended followup, rate=2
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 1 $delay 1 2
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 2 $delay 1 2
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 3 $delay 1 2
-
-#Extended followup, rate=4
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 1 $delay 1 4
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 2 $delay 1 4
-Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/add_delay.R ${SLURM_ARRAY_TASK_ID} 3 $delay 1 4
-
 #Run script that summarizes data for each of the scenarios
 #No extended followup, rate=1
 Rscript /home/groups/CEDAR/MCED_sim/Scripts/MARTA_sim/Delay/summarize_delay.R ${SLURM_ARRAY_TASK_ID} 1 $delay 0 1

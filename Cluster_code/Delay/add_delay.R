@@ -5,12 +5,14 @@ i <- as.numeric(args[1])
 scenario_no <-as.numeric(args[2])
 delay_no <-as.numeric(args[3])
 extended_followup<-as.numeric(args[4])
+early_to_late_rate<-as.numeric(args[5])
 
 
 #i=1
 #scenario_no=1
-#delay_no=1
+#delay_no=6
 #extended_followup=0
+#early_to_late_rate=1
 
 the_delay=case_when(delay_no == 1 ~ 0,
                     delay_no==2 ~ .1,
@@ -33,6 +35,7 @@ get_delay_stage<-function(current_stage,early_to_late_rate,delay){
     if(current_stage=="Late"){
       return(current_stage)
     }else{
+    #  browser()
       late_prob=1-exp(-early_to_late_rate * delay)
       out=sample(c("Early","Late"),size=1,prob=c(1-late_prob,late_prob))
       return(out)
@@ -103,10 +106,14 @@ advance_dx_time_stage<-function(the_data,delay,early_to_late_rate, extended_foll
   
 }
 
-results=advance_dx_time_stage(the_data=results,delay=the_delay,early_to_late=2,extended_followup=extended_followup)
+results=advance_dx_time_stage(the_data=results,delay=the_delay,early_to_late_rate=early_to_late_rate,extended_followup=extended_followup)
+
+#results1=advance_dx_time_stage(the_data=results,delay=the_delay,early_to_late_rate=1,extended_followup=extended_followup)
+#results4=advance_dx_time_stage(the_data=results,delay=the_delay,early_to_late_rate=4,extended_followup=extended_followup)
+
 
 #Save summary data file
-save_file_name=file.path(delay_dirname,paste0("delay_", extended_followup, "_", i,".Rdata"))
+save_file_name=file.path(delay_dirname,paste0("delay_", extended_followup, "_", early_to_late_rate,"_", i,".Rdata"))
 save(results,file=save_file_name)
 
 

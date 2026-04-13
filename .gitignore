@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+Cluster_data/
+Data/Cluster/
+.DS_Store
+Report/.DS_Store

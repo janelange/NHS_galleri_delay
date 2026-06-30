@@ -11,6 +11,7 @@ scenario_no <-as.numeric(args[2])
 delay_no <-as.numeric(args[3])
 extended_followup<-as.numeric(args[4])
 early_to_late_rate<-as.numeric(args[5])
+screen_arm_delay<-as.numeric(args[6])
 
 
 #i=1
@@ -18,20 +19,21 @@ early_to_late_rate<-as.numeric(args[5])
 #delay_no=6
 #extended_followup=0
 #early_to_late_rate=4
+#screen_arm_delay=1
 
 the_delay=case_when(delay_no == 1 ~ 0,
-                              delay_no==2 ~ .1,
-                              delay_no==3 ~ .2,
-                              delay_no==4 ~ .3,
-                              delay_no==5 ~.5,
-                              delay_no==6 ~.6)
+                              delay_no==2 ~ 2,
+                              delay_no==3 ~ 10,
+                              delay_no==4 ~ 30,
+                              delay_no==5 ~ 60,
+                              delay_no==6 ~ 90)
                               
 
 ###################################################################################################################
 #Load data file
 dirname=paste0("/home/groups/CEDAR/MCED_sim/Output/MARTA_sim/scenario_no_",scenario_no,"/delay_",delay_no)
 
-load(file.path(dirname,paste0("delay_", extended_followup, "_", early_to_late_rate,"_", i,".Rdata")))
+load(file.path(dirname,paste0("delay_", extended_followup, "_", early_to_late_rate,"_", screen_arm_delay, "_", i,".Rdata")))
 
 ###################################################################################################################
 screen_info<-expand.grid(sex=c("Male","Female"),cancer_site=c("Anus",  "Bladder",  "Colorectal", "Esophagus",
@@ -107,7 +109,6 @@ summary_screen_cancers[is.na(summary_screen_cancers)]<-0
 #Get the clinical cancers by start age and year of follow-up in the CONTROL ARM
 ###############################################################################
 
-
 control<-subset(results,arm=="C") 
 #get the counts of cancers by Followup
 control <-control %>% mutate(followup=cut(clin_dx_age-start_age,breaks=seq(0,10),right=F,labels=seq(1,10)),seed=i,scenario_no=scenario_no)
@@ -122,14 +123,17 @@ control_cancers_followup=control_cancers
 #Save summary data file
 
 
-save_file_name=file.path(dirname,paste0("summary_delay_", extended_followup, "_", early_to_late_rate,"_", i,".Rdata"))
+save_file_name=file.path(dirname,paste0("summary_delay_", extended_followup, "_", early_to_late_rate,"_", screen_arm_delay, "_", i,".Rdata"))
+
+
 out=list(control_cancers_followup=control_cancers_followup,
          summary_screen_at_risk=summary_screen_at_risk,
          summary_screen_cancers=summary_screen_cancers,
          summary_interval_cancers=summary_interval_cancers,
           delay=the_delay,
          extended_followup=extended_followup,
-         early_to_late_rate=early_to_late_rate)
+         early_to_late_rate=early_to_late_rate,
+         screen_arm_delay=screen_arm_delay)
 save(out,file=save_file_name)
 
 

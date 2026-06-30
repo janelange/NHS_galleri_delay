@@ -1097,6 +1097,25 @@ ggsave(combined_plot2,file=here("plot_all_combined_clinical_policy_new.pdf"),hei
 
 ```
 
+### Giant Output Table
+```{r}
+#| label: tab-giant_table
+#| echo: false
+#| message: false
+
+DT::datatable(
+plots_scen_E$counts_summary,
+  extensions = "Buttons",
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("csv")
+  )
+)
 
 
+
+```
+
+
+plots_scen_E
 

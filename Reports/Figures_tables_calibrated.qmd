@@ -1117,5 +1117,4 @@ plots_scen_E$counts_summary,
 ```
 
 
-plots_scen_E
 

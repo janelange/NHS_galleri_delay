@@ -358,7 +358,8 @@ make_delay_plots2 <- function(extended_followup,the_early_to_late_rate,screen_ar
 #Join with counts_summmary 
  counts_summary <- counts_summary %>%
     left_join(counts_summary_no_delay,by=c("seed","scenario_no","early_to_late_rate","extended_followup","screen_arm_delay"))
-  
+
+#summarize mean and SD of estimands across random seeds  
   counts_summary<-counts_summary%>%
     group_by(delay,scenario_no,extended_followup,early_to_late_rate,screen_arm_delay) %>%
     summarise(
@@ -426,7 +427,7 @@ make_delay_plots2 <- function(extended_followup,the_early_to_late_rate,screen_ar
       .groups = "drop"
     )
   
-  #browser()
+#create long version for plotting
   counts_long <- counts_summary %>%
     pivot_longer(
       cols = -c(delay,early_to_late_rate,extended_followup,scenario_no,screen_arm_delay),
@@ -459,7 +460,7 @@ make_delay_plots2 <- function(extended_followup,the_early_to_late_rate,screen_ar
                arm   = factor(arm,   levels = c("screen","control"),labels=c("Intervention","Control")),
                mode  = factor(mode,  levels = c("screen", "clinical", "total"),labels=c("MCED", "Non-MCED", "Total")))
      
-#browser()
+#Dataset just with bias data for plotting; note doesn't allow for SEs
   bias_data<-subset(counts_long,(variable%in%c("rel_reduction","reduction")&extended_followup==the_extended_followup)&(early_to_late_rate==the_early_to_late_rate&screen_arm_delay==the_screen_arm_delay))
   
   delay0 <- bias_data %>%
@@ -491,7 +492,7 @@ make_delay_plots2 <- function(extended_followup,the_early_to_late_rate,screen_ar
       pct_bias = 100 * rel_bias
     )
 
- 
+#Dataset just for policy data for plotting--note; doesn't allow for SEs 
 policy_data<-subset(counts_long,(variable%in%c("policy_rel_reduction","policy_reduction")&extended_followup==the_extended_followup)&(early_to_late_rate==the_early_to_late_rate&screen_arm_delay==the_screen_arm_delay))
   
   delay0 <- policy_data %>%

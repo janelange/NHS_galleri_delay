@@ -1,0 +1,584 @@
+---
+title: "Preliminary results--NHS-Delay April 28"
+author: "Jane Lange"
+format: html
+editor: visual
+toc: true
+bibliography: references.bib
+fig-cap-location: top
+embed-resources: true
+project:
+  execute-dir: project
+---
+
+# Objectives
+
+-   **Impact of diagnostic delays on trial outcomes:** Quantify how delays in diagnosis of cancers during a trial (e.g., NHS-Galleri) affect observed trial endpoints. Consider delays that affect
+
+    -   only clinically detected cancers.
+
+    -   both screen and clinically detected cancers.
+
+-   **Impact of delays under an MCED screening policy:** Evaluate late-stage disease outcomes under universal MCED screening when clinically detected cancers are subject to diagnostic delays, compared to an unscreened population without delay.
+
+-   **Effect of trial follow-up window**: Compare results based on the fixed NHS-Galleri trial duration (3 years) versus outcomes defined by the eventual stage at diagnosis for all cancers that would have been clinically detected during the trial period.
+
+-   **Effect of transition rates between early and late clinically detected states**: Compare results assuming different rates of transition between early and late stage disease after clinical diagnosis.
+
+    -   Include both fixed rates across cancer sites and rates that are equal to pre-clinical early-to-late progression rates that vary across cancer sites.
+
+# Methods
+
+## NHS Trial Simulation
+
+-   We simulated 200 iterations of the trial.
+-   Each NHS-Galleri simulation includes N=70,020 participants in both the screening and control arms, followed for three annual screens plus one additional year of follow-up. Starting ages range from 50 to 77 years, assigned according to UK demographic tables[@northern_ireland_statistics_and_research_agency_2021_2022]. The simulation permits censoring due to other-cause mortality but assumes no additional dropout.
+-   The trial was simulated using the **MCEDsim** package, which generates individual level natural histories according to a five-state model (@fig-model).
+-   Outcomes are simulated for 11 solid cancer sites (anus, bladder, colorectal, esophagus, gastric, head and neck, liver, lung, lymphoma,ovary, pancreas), corresponding to 11/12 cancers targeted in the NHS Galleri trial endpoints.
+-   For the NHS Galleri simulations, models are calibrated to National Cancer Registration and Analysis Service (NCRAS) data.
+-   Other cause death is based on US mortality tables.
+
+![Five state natural history model used in MCEDsim.](Images/figure1.png){#fig-model width="60%"}
+
+## Natural history and test performance inputs
+
+-   **MCEDsim** is calibrated to age- and stage-specific cancer incidence data based on two key inputs: the overall mean pre-clinical sojourn time (OMST) and the late-stage mean pre-clinical sojourn time (LMST).
+-   Natural history model and sensitivity inputs are specified as in [@gogebakan_clinical_2025], which noted that the only existing study of pre-clinical detectability of the GRAIL demonstrated virtually no sensitivity beyond 2 years prior to clinical diagnosis[@patel_methylated_2023].
+-   Sensitivity of the MCED test for each cancer site is set so that early-stage sensitivity is either equal to that observed in case-control studies [@klein_clinical_2021] of clinically diagnosed patients (optimistic) or 50% of that level (conservative) (@tbl-sens_tab). Sensitivity for late-stage disease is assumed to be equal to that of clinically diagnosed patients. The three combinations of OMST, LMST, and early stage sensitivity assumptions are summarized in @tbl-simulation_input.
+-   For this analysis we consider only Scenario C (slow-slow conservative).
+
+```{r}
+#| tbl-cap: "Sensitivity of Galleri test based on case-control study [@klein_clinical_2021]"
+#| tbl-colwidths: [60,40]
+#| echo: false
+#| label: tbl-sens_tab
+knitr::kable(data.frame(
+Site = c("Anus","Bladder","Colorectal","Esophagus","Gastric",
+"Head and neck","Liver","Lung","Lymphoma","Ovary","Pancreas"),
+Early=c(0.5,
+0.18,
+0.67,
+0.48,
+0.33,
+0.72,
+0.94,
+0.4,
+0.46,
+0.6,
+0.62),
+Late=c(1,
+0.83,
+0.92,
+0.97,
+0.94,
+0.93,
+1,
+0.93,
+0.66,
+0.9,
+0.88)
+))
+```
+
+```{r}
+#| label: tbl-simulation_input
+#| echo: false
+#| tbl-cap: "Simulation input scenarios."
+
+
+knitr::kable(data.frame(
+Assumption = c("A",
+"B",
+"C"),
+OMST = c("1 year", "2 years", "2 years"),
+LMST = c("6 months", "6 months", "1 year"),
+"Relative Early-Stage Sensitivity" = c("100%", "50%", "50%")
+))
+```
+
+## Delays in diagnosis due to spillover effects
+
+-   To operationalize the spillover effect, we add a delay to the times of diagnosis. We considered two scenarios in which delays affected
+    -   Only clinically detected disease in screen and control arms.
+    -   Both screen and clinically detected disease.\
+-   Currently, we assume a constant delay across all individuals.
+-   Specified delays range from 0-.5 years, in increments of .1 years.
+-   Among individuals who would have been diagnosed at an early stage in the absence of delay, we resample stage at the delayed diagnosis time based on the probability of transitioning between early- and late-stage disease.
+-   We assume a exponential model for stage progression after clinical diagnosis.
+-   We considered four sets of assumptions about the progression rate between early- and late-stage disease after it becomes clinically detectable:
+    -   early-to-late progression rates that vary across cancer sites and are based on the pre-clinical progression rates.
+    -   fixed early-to-late progression rates with mean durations of .25, .5, and 1 year between diagnosis in early stage and progression to late-stage.
+
+## Reporting Results
+
+-   **Early and late screen- and clinically-detected cancers**\
+    Report counts of early-stage (I–II) and late-stage (III–IV) cancers at the end of the trial, stratified by detection mode (screen-detected vs clinically detected) across delay scenarios (0–0.5 years).
+
+-   **Trial relevant between-arm comparisons by delay:**\
+    Estimate the absolute and relative reduction in late-stage disease comparing the screen and control arms under each delay scenario.
+
+-   **Policy-relevant comparisons by delay:**\
+    Estimate the absolute and relative reduction in late-stage disease comparing the screen arm under a specified delay to the control arm under no delay.
+
+-   **Analysis windows:**\
+    Perform all analyses under:
+
+    1.  A 3-year trial window that censors diagnoses at trial end\
+    2.  An extended follow-up window that includes cancers that would have been clinically diagnosed within the 3-year window in the absence of delay
+
+-   **Natural history assumptions:** Perform all analyses under all natural history assumption C.
+
+-   **Delay assumptions:** Delay affects only the clinically diagnosed cancer or delay equally affects screen and clinical cancers.
+
+-   **Stage progression rates** Perform all analyses under each of the 3 constant early-to-late stage progressions after clinical diagnosis and early-to-late rates based on pre-clinical progression rates that varies by cancer site.
+
+```{r}
+#| echo: false
+#| message: false
+#| include: false
+
+library(here)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(patchwork)
+
+
+make_delay_plots <- function(extended_followup,scenario_no,screen_arm_delay) {
+  load(here("Data/all_delay_summary.Rdata"))
+combined_data<-combined_data%>%mutate(followup=as.numeric(as.character(followup)),
+                                      scenario_no=factor(scenario_no))
+
+
+  
+  the_extended_followup=extended_followup
+  the_scenario_no=scenario_no
+  the_screen_arm_delay=screen_arm_delay
+  
+
+  counts_summary <- subset(combined_data, followup <= 3) %>%
+    group_by(seed, delay, scenario_no,extended_followup,early_to_late_rate,screen_arm_delay) %>%
+    summarise(
+      tot_late_control  = sum(tot_late_control),
+      tot_late_screen   = sum(tot_late_screen),
+      tot_late_interval = sum(tot_late_interval),
+      tot_early_screen  = sum(tot_early_screen),
+      tot_early_interval= sum(tot_early_interval),
+      tot_early_control = sum(tot_early_control),
+      .groups = "drop"
+    )
+  
+  counts_summary_control_no_delay<-counts_summary%>%filter(delay==0)%>%select(c("seed","tot_late_control","tot_early_control","scenario_no","extended_followup","early_to_late_rate","screen_arm_delay"))%>%rename(ref_late_control=tot_late_control,ref_early_control=tot_early_control)
+  
+  
+  
+  counts_summary <- counts_summary %>%
+    left_join(counts_summary_control_no_delay,by=c("seed","scenario_no","early_to_late_rate","extended_followup","screen_arm_delay"))%>%
+    group_by(delay,scenario_no,extended_followup,early_to_late_rate,screen_arm_delay) %>%
+    summarise(
+      n = n(),
+      mean_late_control = mean(tot_late_control),
+      se_late_control   = sd(tot_late_control)/sqrt(n),
+      
+      mean_early_control = mean(tot_early_control),
+      se_early_control   = sd(tot_early_control)/sqrt(n),
+      
+      mean_late_screen = mean(tot_late_screen),
+      se_late_screen   = sd(tot_late_screen)/sqrt(n),
+      
+      mean_late_interval = mean(tot_late_interval),
+      se_late_interval   = sd(tot_late_interval)/sqrt(n),
+      
+      mean_late_screen_arm = mean(tot_late_screen + tot_late_interval),
+      se_late_screen_arm   = sd(tot_late_screen + tot_late_interval)/sqrt(n),
+      
+      mean_early_screen = mean(tot_early_screen),
+      se_early_screen   = sd(tot_early_screen)/sqrt(n),
+      
+      mean_early_interval = mean(tot_early_interval),
+      se_early_interval   = sd(tot_early_interval)/sqrt(n),
+      
+      mean_early_screen_arm = mean(tot_early_screen + tot_early_interval),
+      se_early_screen_arm   = sd(tot_early_screen + tot_early_interval)/sqrt(n),
+      
+      mean_all_control = mean(tot_early_control + tot_late_control),
+      se_all_control   = sd(tot_early_control + tot_late_control)/sqrt(n),
+      
+      mean_all_screen = mean(tot_early_screen + tot_late_screen),
+      se_all_screen   = sd(tot_early_screen + tot_late_screen)/sqrt(n),
+      
+      mean_all_interval = mean(tot_early_interval + tot_late_interval),
+      se_all_interval   = sd(tot_early_interval + tot_late_interval)/sqrt(n),
+      
+      mean_all_screen_arm = mean(tot_early_screen + tot_early_interval + tot_late_screen + tot_late_interval),
+      se_all_screen_arm   = sd(tot_early_screen + tot_early_interval + tot_late_screen + tot_late_interval)/sqrt(n),
+      
+      mean_reduction = mean(tot_late_control - (tot_late_screen + tot_late_interval)),
+      se_reduction   = sd(tot_late_control - (tot_late_screen + tot_late_interval))/sqrt(n),
+      
+      mean_policy_reduction = mean(ref_late_control - (tot_late_screen + tot_late_interval)),
+      se_policy_reduction   = sd(ref_late_control - (tot_late_screen + tot_late_interval))/sqrt(n),
+      
+      mean_rel_reduction = 100*mean((tot_late_control - (tot_late_screen + tot_late_interval))/tot_late_control),
+      se_rel_reduction   = 100*sd((tot_late_control - (tot_late_screen + tot_late_interval))/tot_late_control)/sqrt(n),
+      
+      mean_policy_rel_reduction = 100*mean((ref_late_control - (tot_late_screen + tot_late_interval))/ref_late_control),
+      se_policy_rel_reduction   = 100*sd((ref_late_control - (tot_late_screen + tot_late_interval))/ref_late_control)/sqrt(n),
+      .groups = "drop"
+    )
+  
+  #browser()
+  
+  counts_long <- counts_summary %>%
+    pivot_longer(
+      cols = -c(delay,early_to_late_rate,extended_followup,scenario_no,screen_arm_delay),
+      names_to = c(".value", "variable"),
+      names_pattern = "(mean|se)_(.*)"
+    )%>%mutate(early_to_late_rate=factor(early_to_late_rate))
+  
+  counts_only=subset(counts_long,!variable%in%c("reduction","ratio","rel_reduction"))%>%
+    mutate(stage= case_when(grepl("^early_", variable) ~ "early",
+                            grepl("^late_",  variable)  ~ "late",
+                            grepl("^all_",  variable)  ~ "all",
+                            TRUE ~ NA_character_),
+           arm = case_when(
+             grepl("(_screen$|_screen_arm$|_interval$)", variable) ~ "screen",
+             TRUE ~ "control"),
+           mode=case_when(
+             grepl("(_screen_arm)" ,variable)~"total",
+             grepl("(_screen)", variable) ~ "screen",
+             grepl("(_control|_interval)", variable) ~ "clinical",
+             TRUE ~ "control"))%>%mutate(
+               stage = factor(stage, levels = c("early", "late", "all")),
+               arm   = factor(arm,   levels = c("control", "screen")),
+               mode  = factor(mode,  levels = c("clinical", "screen", "total"))
+             )%>%subset(!is.na(variable))%>%
+    mutate(early_to_late_rate=factor(early_to_late_rate))
+  
+
+  theme_mced <- function(base_size = 12) {
+    theme_minimal(base_size = base_size) +
+      theme(
+        legend.position   = "bottom",
+        panel.grid.minor  = element_blank(),
+        strip.text        = element_text(face = "bold"),
+        strip.background  = element_rect(fill = NA, color = NA),
+        panel.spacing     = unit(1, "lines"),
+        plot.title = element_text(hjust = 0.5)
+      )
+  }
+  
+
+  #Plots of counts of outcomes
+  counts_plot <- ggplot(data=subset(counts_only,(!is.na(mode)&extended_followup==the_extended_followup)&(scenario_no==the_scenario_no&screen_arm_delay==the_screen_arm_delay)),aes(x = delay, y = mean, group = stage)) +
+   #  geom_ribbon(aes(ymin = mean - 1.96*se, ymax = mean + 1.96*se, fill = stage),alpha = .18) +
+    geom_line(aes(color = stage,group=interaction(early_to_late_rate,stage))) +geom_point(aes(color = stage,shape=early_to_late_rate)) +facet_grid(arm ~ mode) +
+    theme_mced() +
+    labs(x = "Diagnosis delay (years)", y = "Mean count", color = "Stage")+
+    ggtitle("Stage-specific cancer diagnoses by trial arm and mode of detection")
+
+  #Plots of relative reduction in late stage disease
+  plot_rel_reduction <- ggplot(subset(counts_long,
+                                      ((variable=="rel_reduction"&extended_followup==the_extended_followup)&(scenario_no==the_scenario_no&screen_arm_delay==the_screen_arm_delay))), aes(delay, mean)) +
+    geom_line(linewidth = 1,aes(color=early_to_late_rate,group=early_to_late_rate)) +
+    geom_point(size = 2,aes(color=early_to_late_rate)) +
+    geom_errorbar(aes(ymin=mean-se,ymax=mean+se),alpha=.18)+
+    theme_mced() +
+    labs(x = "Diagnosis delay (years)", y = "Relative reduction (%)")
+  
+  plot_abs_reduction <- ggplot(subset(counts_long,(variable=="reduction"&extended_followup==the_extended_followup)&(scenario_no==the_scenario_no&screen_arm_delay==the_screen_arm_delay)), aes(delay, mean)) +
+    geom_line(linewidth = 1,aes(color=early_to_late_rate,group=early_to_late_rate)) +
+    geom_point(size = 2,aes(color=early_to_late_rate)) +
+    geom_errorbar(aes(ymin=mean-se,ymax=mean+se),alpha=.18)+
+    theme_mced() +
+    labs(x = "Diagnosis delay (years)", y = "Absolute reduction (cases)")
+  
+  #Plots of relative reduction in late stage disease
+  plot_rel_policy <- ggplot(subset(counts_long,(variable=="policy_rel_reduction"&extended_followup==the_extended_followup)&(scenario_no==the_scenario_no &screen_arm_delay==the_screen_arm_delay)), aes(delay, mean)) +
+    geom_line(linewidth = 1,aes(color=early_to_late_rate,group=early_to_late_rate)) +
+    geom_point(size = 2,aes(color=early_to_late_rate)) +
+    geom_errorbar(aes(ymin=mean-se,ymax=mean+se),alpha=.18)+
+    theme_mced() +
+    labs(x = "Diagnosis delay (years)", y = "Relative reduction (%)")
+  
+  plot_abs_policy <- ggplot(subset(counts_long,(variable=="policy_reduction"&extended_followup==the_extended_followup)&(scenario_no==the_scenario_no&screen_arm_delay==the_screen_arm_delay)), aes(delay, mean)) +
+    geom_line(linewidth = 1,aes(color=early_to_late_rate,group=early_to_late_rate)) +
+    geom_point(size = 2,aes(color=early_to_late_rate)) +
+    geom_errorbar(aes(ymin=mean-se,ymax=mean+se),alpha=.18)+
+    theme_mced() +
+    labs(x = "Diagnosis delay (years)", y = "Absolute reduction (cases)")
+  
+
+  reduction_plot<-plot_abs_reduction+ggtitle("Absolute")+plot_rel_reduction+ggtitle("Relative") + plot_annotation(title = 'Reductions in late-stage disease by delay')
+  
+  
+  policy_plot<-plot_abs_policy+ggtitle("Absolute")+plot_rel_policy+ggtitle("Relative") + plot_annotation(title = 'Reductions in late-stage disease by delay')
+  
+  return(list(
+    counts_plot = counts_plot,
+    reduction_plot = reduction_plot,
+    policy_plot=policy_plot
+  ))
+}
+
+```
+
+```{r}
+#| echo: false
+#| message: false
+
+
+
+#no screen arm delay
+# 3-year window
+plots_3yr_C_0_3 <- make_delay_plots(extended_followup=0,scenario_no=3,screen_arm_delay=0)
+
+# extended follow-up
+plots_ext_C_0_3 <- make_delay_plots(extended_followup=1,scenario_no=3,screen_arm_delay=0)
+
+#screen arm delay
+# 3-year window
+plots_3yr_C_1_3 <- make_delay_plots(extended_followup=0,scenario_no=3,screen_arm_delay=1)
+
+# extended follow-up
+plots_ext_C_1_3 <- make_delay_plots(extended_followup=1,scenario_no=3,screen_arm_delay=1)
+
+
+
+#no screen arm delay
+# 3-year window
+plots_3yr_C_0_2 <- make_delay_plots(extended_followup=0,scenario_no=2,screen_arm_delay=0)
+
+# extended follow-up
+plots_ext_C_0_2 <- make_delay_plots(extended_followup=1,scenario_no=2,screen_arm_delay=0)
+
+#screen arm delay
+# 3-year window
+plots_3yr_C_1_2 <- make_delay_plots(extended_followup=0,scenario_no=2,screen_arm_delay=1)
+
+# extended follow-up
+plots_ext_C_1_2 <- make_delay_plots(extended_followup=1,scenario_no=2,screen_arm_delay=1)
+
+
+#no screen arm delay
+# 3-year window
+plots_3yr_C_0_1 <- make_delay_plots(extended_followup=0,scenario_no=1,screen_arm_delay=0)
+
+# extended follow-up
+plots_ext_C_0_1 <- make_delay_plots(extended_followup=1,scenario_no=1,screen_arm_delay=0)
+
+#screen arm delay
+# 3-year window
+plots_3yr_C_1_1 <- make_delay_plots(extended_followup=0,scenario_no=1,screen_arm_delay=1)
+
+# extended follow-up
+plots_ext_C_1_1 <- make_delay_plots(extended_followup=1,scenario_no=1,screen_arm_delay=1)
+
+
+
+
+
+```
+
+# Results
+
+## Early and late screen- and clinically-detected cancers
+
+-   Under diagnostic delays in clinically diagnosed patients
+
+    -   Counts of clinically diagnosed cancers in late-stage disease increase, and early-stage cancers decrease.
+
+    -   Counts of screen-detected cases are unaffected.
+
+    -   Early-to-late transition rates after clinical detection affect the proportion of early and late stage cases detection under diagnostic delays, with faster rates leading to more late-stage cases detected.
+
+-   Given censoring at the end of the trial, overall the number of clinically detected cases observed during the trial goes down (@fig-counts_3year).
+
+-   Under the extended follow-up scenario, the overall counts of clinical cases stay constant(@fig-counts_extended).
+
+```{r}
+#| label: fig-counts_3year
+#| echo: false
+#| message: false
+#| fig-height: 10
+#| fig-width: 12 
+#| fig-cap: "**Censoring due to end of trial** Mean counts of cases detected by screen and control arm during simulated NHS-Galleri trials by diagnosis delay applied to I. clinical cases only II. Screen and clinical cases"
+heading_plot <- function(label) {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = label,
+             hjust = 0, fontface = "bold", size = 5) +
+    xlim(0, 1) + ylim(-1, 1) +
+    theme_void() +
+    theme(plot.margin = margin(0, 0, 0, 0))
+}
+
+scenario_I <- wrap_elements(
+  heading_plot("I. Clinical cases only") /
+    wrap_elements(plots_3yr_C_0_3$counts_plot) +
+    plot_layout(heights = c(0.03, 1))
+)
+
+scenario_II <- wrap_elements(
+  heading_plot("II. Screen and clinical cases") /
+    wrap_elements(plots_3yr_C_1_3$counts_plot) +
+    plot_layout(heights = c(0.03, 1))
+)
+
+
+scenario_I +  scenario_II
+```
+
+```{r}
+#| label: fig-counts_extended
+#| echo: false
+#| message: false
+#| fig-height: 10
+#| fig-width: 12 
+#| fig-cap: "**Extended follow-up** Mean counts of cases detected by screen and control arm during simulated NHS-Galleri trials by diagnosis delay applied to I. clinical cases only II. Screen and clinical cases."
+
+scenario_I <- wrap_elements(
+  heading_plot("I. Clinical cases only") /
+    wrap_elements(plots_ext_C_0_3$counts_plot) +
+    plot_layout(heights = c(0.03, 1))
+)
+
+scenario_II <- wrap_elements(
+  heading_plot("II. Screen and clinical cases") /
+    wrap_elements(plots_ext_C_1_3$counts_plot) +
+    plot_layout(heights = c(0.03, 1))
+)
+
+
+scenario_I + scenario_II
+```
+
+**Trial relevant between-arm comparisons by delay:**
+
+If delays only affect clinically detected cases: - Under the assumption that observations are censored at the end of follow-up, the absolute reduction first increases and then decreases with increasing delay.
+
+-   The relative reduction is relatively flat for delays up to .2 years and then decreases with increasing delays.
+
+-   Under extended follow-up, both the absolute and relative reductions become more pronounced with increasing delay.
+
+    -   The faster the progression rate from early to late disease after clinical diagnosis, the bigger the impact.
+
+If delays only affect both screen and clinically detected cases:
+
+-   Absolute and relative reductions in the screen arm relative to control decrease both with censoring at the end of the trial and with extended followup.
+
+    -   Why is this the case?
+
+```{r}
+#| label: fig-reduction_3year
+#| echo: false
+#| message: false
+#| fig-height: 10
+#| fig-width: 12 
+#| fig-cap: "**Censoring due to end of trial** Mean absolute and relative reductions in late-stage disease across 200 simulated NHS-Galleri trials as a function of diagnostic delay applied to I. clinical cases only II. screen and clinical cases."
+heading_plot <- function(label) {
+  ggplot() +
+    annotate("text", x = 0, y = 0.5, label = label,
+             hjust = 0, vjust = 0.5,
+             fontface = "bold", size = 5) +
+    xlim(0, 1) + ylim(0, 1) +
+    theme_void() +
+    theme(plot.margin = margin(5, 0, 2, 0))
+}
+
+scenario_I <- wrap_elements(
+  heading_plot("Scenario I") /
+    wrap_elements(plots_3yr_C_0_3$reduction_plot) +
+    plot_layout(heights = c(0.06, 1))
+)
+
+scenario_II <- wrap_elements(
+  heading_plot("Scenario II") /
+    wrap_elements(plots_3yr_C_1_3$reduction_plot) +
+    plot_layout(heights = c(0.06, 1))
+)
+
+
+scenario_I + scenario_II 
+
+
+```
+
+```{r}
+#| label: fig-reduction_extended_followup
+#| echo: false
+#| message: false
+#| fig-height: 10
+#| fig-width: 12 
+#| fig-cap: "**Extended follow-up** Mean absolute and relative reductions in late-stage disease across 200 simulated NHS-Galleri trials as a function of diagnostic delay applied to I. clinical cases only II. screen and clinical cases."
+heading_plot <- function(label) {
+  ggplot() +
+    annotate("text", x = 0, y = 0.5, label = label,
+             hjust = 0, vjust = 0.5,
+             fontface = "bold", size = 5) +
+    xlim(0, 1) + ylim(0, 1) +
+    theme_void() +
+    theme(plot.margin = margin(5, 0, 2, 0))
+}
+
+scenario_I <- wrap_elements(
+  heading_plot("Scenario I") /
+    wrap_elements(plots_ext_C_0_3$reduction_plot) +
+    plot_layout(heights = c(0.06, 1))
+)
+
+scenario_II <- wrap_elements(
+  heading_plot("Scenario II") /
+    wrap_elements(plots_ext_C_1_3$reduction_plot) +
+    plot_layout(heights = c(0.06, 1))
+)
+
+
+scenario_I + scenario_II 
+
+
+```
+
+**Policy relevant between-arm comparisons by delay:**
+
+```{r}
+#| label: fig-policy_reduction_extended_followup
+#| echo: false
+#| message: false
+#| fig-height: 10
+#| fig-width: 12 
+#| fig-cap: "**Extended follow-up** Mean absolute and relative reductions in late-stage disease between control arm with no delay and screen arm given diagnostic delay applied to I. clinical cases only II. screen and clinical cases."
+
+heading_plot <- function(label) {
+  ggplot() +
+    annotate("text", x = 0, y = 0.5, label = label,
+             hjust = 0, vjust = 0.5,
+             fontface = "bold", size = 5) +
+    xlim(0, 1) + ylim(0, 1) +
+    theme_void() +
+    theme(plot.margin = margin(5, 0, 2, 0))
+}
+
+scenario_I <- wrap_elements(
+  heading_plot("Scenario I") /
+    wrap_elements(plots_3yr_C_0_3$policy_plot) +
+    plot_layout(heights = c(0.06, 1))
+)
+
+scenario_II <- wrap_elements(
+  heading_plot("Scenario II") /
+    wrap_elements(plots_3yr_C_1_3$policy_plot) +
+    plot_layout(heights = c(0.06, 1))
+)
+
+
+scenario_I + scenario_II 
+
+
+```
+
+-   In our policy-relevant scenario, the apparent benefit of MCED screening relative to no screening is reduced with increasing delays.
+
+-   The effect is greater if delays affect both the screen and clinically detected cases.
+
+### 

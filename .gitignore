@@ -4,5 +4,8 @@
 .Ruserdata
 Cluster_data/
 Data/Cluster/
-.DS_Store
-Report/.DS_Store
+Data/.DS_Store
+**.DS_Store
+**.pdf
+**.svg
+Code/cluster_usage.R
